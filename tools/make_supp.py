@@ -2,6 +2,7 @@
 project page, with a README at the root that explains the three.
 
     python website/tools/make_supp.py                                  # -> paper/build_supp/supplementary.zip
+    python website/tools/make_supp.py --paper-id 1234                  # PDF in the zip: 1234_PhasorPT_CVPR2027_supplementary.pdf
     python website/tools/make_supp.py --pdf paper/build/supp.pdf --release release/phasorpt-code --out paper/build_supp
 
 Code: the files tracked in the release repo (git ls-files: no data / exp / weights links, no build output), without
@@ -67,7 +68,8 @@ ROOT_README = """Supplementary material
 
 Contents
 --------
-supp.pdf          the supplementary document (analyses, derivations, additional results, implementation details)
+{pdf}
+                  the supplementary document (analyses, derivations, additional results, implementation details)
 code/             the code of PhasorPT, based on Pointcept: model, configs of all reported runs, training and
                   evaluation, data pipelines, the Volt baseline, and the logs of the reported runs
 project_page/     the project page (offline copy): interactive figures, 3D viewer of the qualitative results,
@@ -164,6 +166,7 @@ def add_code(z, release):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--pdf", default=os.path.join(REPO, "paper", "build", "supp.pdf"), help="supplement PDF ('' to leave out)")
+    ap.add_argument("--paper-id", default="", help="CVPR submission number, prefixed to the PDF name in the zip")
     ap.add_argument("--release", default=os.path.join(REPO, "release", "phasorpt-code"), help="code release repo ('' to leave out)")
     ap.add_argument("--out", default=os.path.join(REPO, "paper", "build_supp"))
     args = ap.parse_args()
@@ -173,8 +176,9 @@ def main():
     zpath = os.path.join(args.out, "supplementary.zip")
     with zipfile.ZipFile(zpath, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as z:
         if args.pdf:
-            z.write(args.pdf, os.path.basename(args.pdf))
-        z.writestr("README.txt", ROOT_README if args.pdf else README)
+            pdf_name = (f"{args.paper_id}_" if args.paper_id else "") + "PhasorPT_CVPR2027_supplementary.pdf"
+            z.write(args.pdf, pdf_name)
+        z.writestr("README.txt", ROOT_README.format(pdf=pdf_name) if args.pdf else README)
         if args.release:
             add_code(z, args.release)
         for root, _, files in os.walk(page):
