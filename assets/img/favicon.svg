@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<defs><radialGradient id="bg" cx="50%" cy="45%" r="60%"><stop offset="0" stop-color="#1d2a3f"/><stop offset="1" stop-color="#0d1420"/></radialGradient><filter id="glow" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="2.2"/></filter></defs>
+<rect width="64" height="64" rx="12" fill="url(#bg)"/>
+<circle cx="53.00" cy="32.00" r="4.00" fill="#6fa3f2"/>
+<circle cx="50.19" cy="21.50" r="3.81" fill="#6897e0"/>
+<circle cx="42.50" cy="13.81" r="3.30" fill="#5276ad"/>
+<circle cx="32.00" cy="11.00" r="2.60" fill="#2c394f"/>
+<circle cx="21.50" cy="13.81" r="3.30" fill="#9d8058"/>
+<circle cx="13.81" cy="21.50" r="3.81" fill="#dba75c"/>
+<circle cx="11.00" cy="32.00" r="4.00" fill="#f0b45e"/>
+<circle cx="13.81" cy="42.50" r="3.81" fill="#dba75c"/>
+<circle cx="21.50" cy="50.19" r="3.30" fill="#9d8058"/>
+<circle cx="32.00" cy="53.00" r="2.60" fill="#2c394f"/>
+<circle cx="42.50" cy="50.19" r="3.30" fill="#5276ad"/>
+<circle cx="50.19" cy="42.50" r="3.81" fill="#6897e0"/>
+<circle cx="48.99" cy="19.66" r="6.72" fill="#f0b45e" opacity=".6" filter="url(#glow)"/>
+<line x1="32.0" y1="32.0" x2="48.99" y2="32.0" stroke="#6fa3f2" stroke-width="3.2" stroke-linecap="round"/>
+<line x1="32.0" y1="32.0" x2="48.99" y2="19.66" stroke="#f0b45e" stroke-width="5" stroke-linecap="round"/>
+<circle cx="48.99" cy="19.66" r="4.2" fill="#f0b45e"/>
+<circle cx="32.0" cy="32.0" r="3.2" fill="#e9eef6"/></svg>

@@ -1,0 +1,93 @@
+{
+  "format_version": 2,
+  "model": "PhasorPT",
+  "backbone": {
+    "in_channels": 6,
+    "out_channels": 40,
+    "pool_level": 1,
+    "main_level": 3,
+    "local_channels": 128,
+    "main_channels": 384,
+    "local_head_dim": 32,
+    "main_head_dim": 32,
+    "local_depth": 2,
+    "main_depth": 12,
+    "refine_depth": 2,
+    "fuse": "residual",
+    "local_patch": [
+      1024,
+      2
+    ],
+    "main_patch": [
+      1024,
+      2
+    ],
+    "local_rope": [
+      30,
+      100.0,
+      60.0
+    ],
+    "main_rope": [
+      30,
+      100.0,
+      15.0
+    ],
+    "vo_rope": [
+      0.0,
+      0.0
+    ],
+    "ffn_ratio": 4,
+    "drop_path": 0.3,
+    "drop_path_point_frac": 1.0,
+    "use_qknorm": true,
+    "planewave": {
+      "num_waves": 32,
+      "unpool": {
+        "num_waves": 16,
+        "rank": 16
+      }
+    },
+    "point_skip": false,
+    "out_point_channels": 64
+  },
+  "num_classes": 20,
+  "seg_head": false,
+  "logits": [
+    0,
+    20
+  ],
+  "class_names": [
+    "wall",
+    "floor",
+    "cabinet",
+    "bed",
+    "chair",
+    "sofa",
+    "table",
+    "door",
+    "window",
+    "bookshelf",
+    "picture",
+    "counter",
+    "desk",
+    "curtain",
+    "refridgerator",
+    "shower curtain",
+    "toilet",
+    "sink",
+    "bathtub",
+    "otherfurniture"
+  ],
+  "input": {
+    "scale": 0.5,
+    "center_shift": "xy_center_z_min",
+    "grid_size": 0.01,
+    "grid_sample": "first point per cell floor(coord / grid_size), input order",
+    "feat_keys": [
+      "color",
+      "normal"
+    ],
+    "color_scale": 0.00392156862745098
+  },
+  "num_parameters": 22563384
+}

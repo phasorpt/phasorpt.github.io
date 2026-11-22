@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PhasorPT</title>
+<meta name="description" content="PhasorPT: Continuous Geometry for Convolution-Free Point Transformers. Phasor pooling and phasor attention take the geometry directly from the continuous point coordinates.">
+<meta property="og:title" content="PhasorPT: Continuous Geometry for Convolution-Free Point Transformers">
+<meta property="og:description" content="A convolution-free point transformer that matches PTv3 with half its parameters.">
+<link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/fonts/fonts.css">
+<link rel="stylesheet" href="assets/style.css">
+<script type="importmap">
+{ "imports": {
+  "three": "./assets/vendor/three/three.module.js",
+  "three/addons/": "./assets/vendor/three/addons/"
+} }
+</script>
+</head>
+<body>
+
+<!-- ======================= title ======================= -->
+<header class="hero" id="top">
+  <canvas id="hero-bg" aria-hidden="true"></canvas>
+  <div class="wrap">
+    <span class="venue">Under review</span>
+    <h1>PhasorPT</h1>
+    <p class="sub">Continuous Geometry for Convolution-Free Point Transformers</p>
+    <p class="authors">Anonymous Authors</p>
+    <div class="links">
+      <a class="btn" href="#" aria-disabled="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z"/></svg>
+        Paper</a>
+      <a class="btn" href="#" aria-disabled="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l16 16M20 4L4 20"/></svg>
+        arXiv</a>
+      <a class="btn" href="#" aria-disabled="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 8l-4 4 4 4M17 8l4 4-4 4M14 4l-4 16"/></svg>
+        Code</a>
+      <a class="btn" href="#" aria-disabled="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z"/><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"/></svg>
+        Weights</a>
+    </div>
+    <p class="links-note">Paper, code and weights coming soon.</p>
+  </div>
+</header>
+
+<nav class="toc" aria-label="Sections">
+  <div class="wrap">
+    <a class="brand" href="#top">PhasorPT</a>
+    <a href="#abstract">Abstract</a>
+    <a href="#idea">Idea</a>
+    <a href="#pooling">Phasor pooling</a>
+    <a href="#attention">Phasor attention</a>
+    <a href="#results">Results</a>
+    <a href="#scenes">3D scenes</a>
+    <a href="#demo">Live demo</a>
+    <a href="#bibtex">BibTeX</a>
+  </div>
+</nav>
+
+<main>
+
+<!-- ======================= abstract ======================= -->
+<section class="block" id="abstract">
+  <div class="wrap narrow">
+    <div class="abstract reveal">
+      <h2>Abstract</h2>
+      <p>Most state-of-the-art 3D point cloud backbones are hybrids that combine attention with sparse convolutions. While the convolutions supply local geometry, they add architectural complexity, hinder deployment, and tie the network to a discrete voxel grid. Convolution-free point transformers avoid these costs, yet they still trail the hybrids when trained on a single dataset with matched supervision.</p>
+    <p>Dropping the convolutions frees the network from the voxel grid, but we hypothesize that current convolution-free backbones do not fully exploit the continuous point geometry. Pooling the points onto voxels discards their sub-voxel positions, and in attention, positions only influence where a query attends, while the values it aggregates carry no information about where they come from. We address both with operators built on phasors of the continuous point coordinates. <b>Phasor pooling</b> embeds each token from the exact positions of its points, and <b>phasor attention</b> makes the values geometry-aware while staying compatible with efficient attention kernels.</p>
+    <p>Building on both, <b>PhasorPT</b> is a convolution-free point transformer that operates on continuous coordinates throughout. It matches or exceeds the hybrid PTv3 on multiple indoor and outdoor datasets with half its parameters and without a single convolution. With additional supervision from a convolutional teacher trained on the same data, it surpasses all baselines on ScanNet, ScanNet200, and SemanticKITTI.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= idea ======================= -->
+<section class="block" id="idea">
+  <div class="wrap">
+    <div class="head reveal">
+      <h2>Two places where geometry gets lost</h2>
+      <p>Both fixes use one encoding: a <em>phasor</em>, a plane wave evaluated at the exact point position.</p>
+    </div>
+    <div class="two">
+      <a class="card problem reveal" href="#pooling">
+        <span class="tag">Tokens</span>
+        <p class="lost">Voxel patch embeddings forget where the points lie inside a cell.</p>
+        <p class="fix"><b>Phasor pooling</b> embeds each token from the exact offsets of its points.</p>
+      </a>
+      <a class="card problem reveal" href="#attention">
+        <span class="tag">Attention</span>
+        <p class="lost">With RoPE, the values do not know where they come from.</p>
+        <p class="fix"><b>Phasor attention</b> rotates the values by their positions, so the output knows where the attention landed.</p>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= phasor pooling ======================= -->
+<section class="block" id="pooling">
+  <div class="wrap">
+    <div class="head reveal">
+      <span class="eyebrow">Operator 1</span>
+      <h2>Phasor pooling</h2>
+      <p>Every point samples a few learned plane waves at its offset from the token centroid. Averaging features times waves gives a fixed-size token, whatever the number of points, with a kernel that is smooth in the exact position.</p>
+    </div>
+    <div class="card demo pw reveal" id="pool-demo">
+      <div class="demo-title">
+        <span class="hint">Click a cell of the scene to pick a token. Hover a point to follow it through the steps.</span>
+        <span class="pw-actions">
+          <button type="button" class="ghost" id="pw-waves">New waves</button>
+        </span>
+      </div>
+      <div class="pw-scroll">
+        <div class="pw-fig">
+          <canvas id="pw-cv" aria-label="Phasor pooling: scene, token cell, waves, pooled matrix, token"></canvas>
+          <div class="pw-eq stack" style="left:12.5%">
+            <span><i>u<sub>c</sub></i></span><span>=</span><span><i>p<sub>c</sub></i> − <i>μ<sub>t</sub></i></span>
+            <span><i><span class="tl">x</span><sub>c</sub></i></span><span>=</span><span>[<i>x<sub>c</sub></i>, 1]</span>
+          </div>
+          <div class="pw-eq" style="left:45.6%"><i>φ</i>(<i>u</i>) = [1, cos <i>ω</i><sub>1</sub><sup>⊤</sup><i>u</i>, sin <i>ω</i><sub>1</sub><sup>⊤</sup><i>u</i>, …, sin <i>ω<sub>M</sub></i><sup>⊤</sup><i>u</i>]</div>
+          <div class="pw-eq" style="left:73.9%"><i>S<sub>t</sub></i> = <span class="frac"><span>1</span><span><i>n<sub>t</sub></i></span></span> Σ<sub><i>c</i>∈<i>t</i></sub> <i><span class="tl">x</span><sub>c</sub></i> ⊗ <i>φ</i>(<i>u<sub>c</sub></i>)</div>
+          <div class="pw-eq right"><i>h<sub>t</sub></i> = <i>W</i> [vec <i>S<sub>t</sub></i>, log <i>n<sub>t</sub></i>]</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= phasor attention ======================= -->
+<section class="block" id="attention">
+  <div class="wrap">
+    <div class="head reveal">
+      <span class="eyebrow">Operator 2</span>
+      <h2>Phasor attention</h2>
+    </div>
+    <div class="side-by-side reveal">
+      <div class="side-text">
+        <p>RoPE rotates queries and keys: it decides <em>where</em> a query attends. Phasor attention also rotates the values by their positions (<span class="amb">amber</span>), and the output back by the query position.</p>
+        <p>Each value then enters the output relative to the query. The output's phase tells where the attention landed, its length how spread out it was.</p>
+        <p>Both rotations sit outside the attention, so FlashAttention runs unchanged.</p>
+      </div>
+      <figure class="card paperfig tall" data-src="assets/img/vo_attention.svg" aria-label="Phasor attention block: values rotated by key positions before, outputs rotated back by query positions after scaled dot-product attention"></figure>
+    </div>
+
+    <div class="card demo reveal" id="attn-demo">
+      <div class="demo-title">
+        <h3>Try it: aim the attention into empty space</h3>
+        <span class="demo-tools">
+          <span class="seg" role="group" aria-label="Value path">
+            <button type="button" data-mode="rope" aria-pressed="false">RoPE</button>
+            <button type="button" data-mode="phasor" aria-pressed="true">Phasor attention</button>
+          </span>
+          <span class="controls">
+            <label for="attn-spread">Spread <input type="range" id="attn-spread" min="0.4" max="5" step="0.05" value="1.4"></label>
+            <label for="attn-drop">Empty space <input type="range" id="attn-drop" min="0" max="0.8" step="0.05" value="0.35"></label>
+            <label for="attn-cont">Value content <input type="range" id="attn-cont" min="0" max="1" step="0.05" value="0"></label>
+          </span>
+          <button type="button" class="ghost" id="attn-reseed">New scene</button>
+        </span>
+      </div>
+      <div class="attn-wrap">
+        <canvas id="attn-cv" tabindex="0" aria-label="Key grid: move to aim the attention"></canvas>
+        <div class="attn-side">
+          <div class="legend-inline">
+            <span><i style="background:var(--amber)"></i>aim</span>
+            <span><i style="background:var(--accent)"></i>attention weights</span>
+            <span><i class="ring"></i>read from the output</span>
+          </div>
+          <p class="callout">The query at the centre aims its attention (amber cross). Gray patches hold no points, so attention aimed there lands on the surrounding points instead.</p>
+          <p class="callout">Each dial is the output of one frequency, below for x, right for y. The tick shows where it would point if the attention had landed at the aim.</p>
+          <p class="callout"><b>Phasor attention:</b> on a miss the arrows turn away from their ticks and shrink, so the output shows where the attention actually went. <b>RoPE:</b> every arrow points right, whatever happens.</p>
+          <p class="callout"><b>Value content:</b> mixes a feature into each value (black strokes on the keys). The output then carries content and geometry together; at 0 it shows the geometry alone.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= architecture ======================= -->
+<section class="block" id="arch">
+  <div class="wrap">
+    <div class="head reveal">
+      <h2>PhasorPT</h2>
+      <p>Phasor pooling turns the points into tokens, serialized phasor attention blocks run on a fine local and a coarse global stream, and phasor unpooling maps back to the points. No convolutions anywhere.</p>
+    </div>
+    <figure class="card paperfig wide reveal" data-src="assets/img/overview.svg" aria-label="PhasorPT overview"></figure>
+  </div>
+</section>
+
+<!-- ======================= results ======================= -->
+<section class="block" id="results">
+  <div class="wrap">
+    <div class="head reveal">
+      <span class="eyebrow">Results</span>
+      <h2>PTv3 accuracy without sparse convolutions</h2>
+      <p>Without the convolutions, PhasorPT also needs only half the parameters of PTv3. Semantic segmentation, validation mIoU, every model trained from scratch on a single dataset.</p>
+    </div>
+
+    <div class="card reveal table-card">
+      <div class="tablewrap">
+        <table class="res">
+          <thead>
+            <tr class="grp"><th></th><th></th><th></th><th colspan="3">Indoor</th><th colspan="2">Outdoor</th></tr>
+            <tr><th>Method</th><th>Conv-free</th><th>Params</th><th>ScanNet</th><th>ScanNet200</th><th>Structured3D</th><th>nuScenes</th><th>SemanticKITTI</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>MinkUNet</td><td></td><td>37.9M</td><td>72.2</td><td>25.0</td><td>76.4</td><td>73.3</td><td>63.8</td></tr>
+            <tr><td>OA-CNNs</td><td></td><td>51.5M</td><td>76.1</td><td>32.3</td><td class="na">–</td><td>78.9</td><td>70.6</td></tr>
+            <tr><td>PTv2</td><td></td><td>12.8M</td><td>75.4</td><td>30.2</td><td>79.0</td><td>80.2</td><td>70.3</td></tr>
+            <tr><td>PTv3</td><td></td><td>46.2M</td><td class="second">77.5</td><td>35.2</td><td>82.4</td><td>80.4</td><td class="second">70.8</td></tr>
+            <tr><td>LitePT-S</td><td></td><td>12.7M</td><td>76.5</td><td class="na">–</td><td class="best">83.6</td><td class="best">82.2</td><td class="na">–</td></tr>
+            <tr><td>PTX</td><td class="chk">✓</td><td>9.6M</td><td>76.5</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td class="na">–</td></tr>
+            <tr><td>VaViT-B</td><td class="chk">✓</td><td>85.8M</td><td class="na">–</td><td class="na">–</td><td class="na">–</td><td>81.6</td><td>68.7</td></tr>
+            <tr><td>Volt-S</td><td class="chk">✓</td><td>23.7M</td><td>76.4</td><td>34.4</td><td class="na">–</td><td>80.5</td><td>68.8</td></tr>
+            <tr><td class="sub">+ CNN teacher</td><td></td><td></td><td>77.2</td><td class="second">36.2</td><td class="na">–</td><td>81.0</td><td>70.5</td></tr>
+            <tr class="ours sep"><td>PhasorPT (ours)</td><td class="chk">✓</td><td>22.6M</td><td class="second">77.5</td><td>36.1</td><td class="second">83.0</td><td>81.6</td><td>70.6</td></tr>
+            <tr class="ours"><td class="sub">+ CNN teacher</td><td></td><td></td><td class="best">78.3</td><td class="best">36.9</td><td class="na">–</td><td class="second">82.0</td><td class="best">71.4</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note">Val mIoU with test-time augmentation. Conv-free: no sparse convolution anywhere in the network. CNN teacher: extra supervision from a sparse-convolutional network trained on the same data, used only during training. Best in <b>bold</b>, second <u>underlined</u>.</p>
+    </div>
+
+    <div class="res-grid single">
+      <div class="card chart reveal">
+        <h3>From point coordinates alone</h3>
+        <p class="chart-sub">Input: only the xyz coordinates of the points, no colour, no normals. ScanNet val mIoU, one component changed at a time.</p>
+        <div class="bars" id="abl-bars"></div>
+        <p class="note">Phasor pooling and phasor attention each add about one point, together almost two.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= 3D viewer ======================= -->
+<section class="block" id="scenes">
+  <div class="wrap">
+    <div class="head reveal">
+      <span class="eyebrow">Qualitative results</span>
+      <h2>Predictions in 3D</h2>
+      <p>Validation scenes near the median per-scene mIoU. Drag the divider to compare two views.</p>
+    </div>
+    <div class="card viewer reveal" id="viewer">
+      <div class="vbar">
+        <span class="seg" role="group" aria-label="Dataset" id="v-ds"></span>
+        <span class="spacer"></span>
+        <label class="controls" for="v-left">Left <select id="v-left"></select></label>
+        <label class="controls" for="v-right">Right <select id="v-right"></select></label>
+        <button type="button" class="ghost" id="v-reset">Reset view</button>
+      </div>
+      <div class="scenes" id="v-scenes"></div>
+      <div class="stage" id="v-stage">
+        <div class="loading" id="v-loading">loading…</div>
+        <span class="lbl l" id="v-lbl-l"></span><span class="lbl r" id="v-lbl-r"></span>
+        <div class="split" id="v-split"></div>
+        <div class="handle" id="v-handle" role="slider" tabindex="0" aria-label="Compare divider" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l-6 6 6 6M15 6l6 6-6 6"/></svg>
+        </div>
+        <div class="hover-dot" id="v-hover-dot"></div>
+        <div class="hover-tip" id="v-hover"></div>
+        <div class="stat-chip" id="v-chip"></div>
+        <div class="help-chip">click a point: class · drag: orbit · right-drag: pan · wheel: zoom</div>
+      </div>
+      <div class="vlegend" id="v-legend"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= live demo ======================= -->
+<section class="block" id="demo">
+  <div class="wrap">
+    <div class="head reveal">
+      <span class="eyebrow">Live demo</span>
+      <h2>Run PhasorPT in your browser</h2>
+      <p>Without sparse convolutions, PhasorPT is easy to deploy: ported to Rust with <a href="https://burn.dev" target="_blank" rel="noopener">Burn</a>, it runs locally in your browser via WebAssembly and WebGPU, no server needed. The model is the ScanNet one from the main table (CNN teacher, 78.3 mIoU).</p>
+    </div>
+    <div class="card viewer reveal" id="demo-card">
+      <div class="vbar">
+        <span class="seg" role="group" aria-label="Colours">
+          <button type="button" data-dmode="input" aria-pressed="true">Input (RGB)</button>
+          <button type="button" data-dmode="pred" aria-pressed="false" disabled>PhasorPT</button>
+        </span>
+        <span class="spacer"></span>
+        <label class="ghost-file"><input type="file" id="demo-file" accept=".ply" hidden disabled>Open your own .ply</label>
+        <button type="button" class="ghost" id="demo-run" disabled>Run again</button>
+      </div>
+      <div class="stage" id="demo-stage">
+        <div class="demo-start" id="demo-start">
+          <p class="demo-lead">Segment a ScanNet validation scene on your GPU.</p>
+          <button type="button" class="btn" id="demo-go">Start the demo</button>
+          <p class="cap">Downloads about 77 MB (model, code, scene). Needs a browser with WebGPU: a recent Chrome or Edge. Firefox is not supported yet.</p>
+        </div>
+        <div class="stat-chip" id="demo-status" style="display:none"></div>
+        <div class="help-chip" id="demo-help" style="display:none">drag: orbit · right-drag: pan · wheel: zoom</div>
+      </div>
+      <div class="vlegend" id="demo-legend"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= bibtex ======================= -->
+<section class="block" id="bibtex">
+  <div class="wrap">
+    <div class="head reveal"><h2>BibTeX</h2></div>
+    <div class="card bib reveal">
+      <button type="button" class="ghost" id="bib-copy">Copy</button>
+<pre id="bib-text">@inproceedings{phasorpt2027,
+  title     = {PhasorPT: Continuous Geometry for Convolution-Free Point Transformers},
+  author    = {Anonymous},
+  booktitle = {Under review},
+  year      = {2027}
+}</pre>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>PhasorPT</span>
+    <span>Interactive figures run in your browser.</span>
+  </div>
+</footer>
+
+<script src="assets/js/page.js"></script>
+<script src="assets/js/pooling.js"></script>
+<script src="assets/js/attention.js"></script>
+<script src="assets/js/results.js"></script>
+<script type="module" src="assets/js/viewer.js"></script>
+<script type="module" src="assets/js/demo.js"></script>
+</body>
+</html>
