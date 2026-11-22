@@ -1,7 +1,11 @@
-"""Offline, anonymous copy of the project page for the supplementary material, zipped together with the supplement PDF.
+"""The supplementary material as one zip: the supplement PDF, the code release, and an offline, anonymous copy of the
+project page, with a README at the root that explains the three.
 
     python website/tools/make_supp.py                                  # -> paper/build_supp/supplementary.zip
-    python website/tools/make_supp.py --pdf paper/build/supp.pdf --out paper/build_supp
+    python website/tools/make_supp.py --pdf paper/build/supp.pdf --release release/phasorpt-code --out paper/build_supp
+
+Code: the files tracked in the release repo (git ls-files: no data / exp / weights links, no build output), without
+symlinks; the script fails if any file contains an identifying string.
 
 The copy loads nothing from the internet (fonts and three.js are vendored in assets/), so reviewers can open it with a
 local static server: the 3D viewer and the live demo need http (fetch, workers) and the demo needs WebGPU, which
@@ -20,6 +24,8 @@ import zipfile
 SITE = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 REPO = os.path.dirname(SITE)
 PAGE = "project_page"
+CODE = "code"
+IDENTIFYING = [b"phasorpt.github", b"github.com/phasorpt"] + ([s.encode() for s in open(_ID).read().split()] if os.path.exists(_ID := os.path.join(SITE, "tools", ".identifying")) else [])
 LIMIT_MB = 100
 SKIP_DIRS = {".git", "tools"}
 SKIP_FILES = {"README.md", ".nojekyll", ".gitignore", "assets/img/pooling.svg", "assets/img/logo.svg", "assets/img/logo.png"}
@@ -59,25 +65,29 @@ demo/               the live demo: WebAssembly module, model (config + fp16 weig
 ROOT_README = """Supplementary material
 ======================
 
-Contents of this archive
-------------------------
-supp.pdf                        the supplementary document
-README.txt                      this file
-project_page/                   the project page (offline copy):
-  index.html                      the page
-  assets/                         styles, scripts, figures, fonts, three.js, point clouds of the 3D viewer
-  demo/                           the live demo: WebAssembly module, model (config + fp16 weights), worker,
-                                  sample scene
-  README.txt                      the instructions below
+Contents
+--------
+supp.pdf          the supplementary document (analyses, derivations, additional results, implementation details)
+code/             the code of PhasorPT, based on Pointcept: model, configs of all reported runs, training and
+                  evaluation, data pipelines, the Volt baseline, and the logs of the reported runs
+project_page/     the project page (offline copy): interactive figures, 3D viewer of the qualitative results,
+                  and a live demo that runs PhasorPT in the browser
+README.txt        this file
 
-The project page has interactive versions of the phasor pooling and phasor attention figures, a 3D viewer of the
-qualitative results, and a live demo that runs PhasorPT in the browser (Rust + Burn compiled to WebAssembly, on
-WebGPU). It loads nothing from the internet.
 
-How to open the project page
-----------------------------
-The page has to be served over http from localhost (the browser does not run the 3D viewer and the demo from a
-file:// URL, and WebGPU is only available on localhost or https). With Python 3:
+code/
+-----
+See code/README.md: installation, data preparation, training and testing, the config of every result in the
+paper (main results, ablations, Volt baseline), and how to reproduce the data pipelines. The model itself is
+code/pointcept/models/phasorpt/; the training and test logs of the reported runs are in code/logs/ (see
+code/logs/README.md). Datasets and checkpoints are not included.
+
+
+project_page/
+-------------
+The page loads nothing from the internet. It has to be served over http from localhost (the browser does not
+run the 3D viewer and the demo from a file:// URL, and WebGPU is only available on localhost or https).
+With Python 3:
 
     cd project_page
     python3 -m http.server 8000
@@ -85,10 +95,13 @@ file:// URL, and WebGPU is only available on localhost or https). With Python 3:
 then open http://localhost:8000 in the browser. Any other static file server works too.
 
 - Interactive figures and 3D viewer: any current browser.
-- Live demo: a browser with WebGPU, e.g. a recent Chrome or Edge (Firefox cannot run it yet). It loads nothing until
-  "Start the demo" is clicked, then reads the model from project_page/demo (about 77 MB) and segments a ScanNet
-  validation scene on the local GPU. The first run includes the compilation of the GPU kernels; "Run again" shows
-  the warm time. A dedicated GPU helps; on laptops, the browser may pick the integrated one.
+- Live demo: a browser with WebGPU, e.g. a recent Chrome or Edge (Firefox cannot run it yet). It loads nothing
+  until "Start the demo" is clicked, then reads the model from project_page/demo (about 77 MB) and segments a
+  ScanNet validation scene on the local GPU. The first run includes the compilation of the GPU kernels; "Run
+  again" shows the warm time. A dedicated GPU helps; on laptops, the browser may pick the integrated one.
+
+Contents of project_page/: index.html (the page), assets/ (styles, scripts, figures, fonts, three.js, point
+clouds of the 3D viewer), demo/ (WebAssembly module, model config and fp16 weights, worker, sample scene).
 """
 
 
@@ -128,9 +141,30 @@ def copy_site(dst):
                     raise SystemExit(f"external URL in {os.path.join(root, f)}: {sorted(set(hits))}")
 
 
+def add_code(z, release):
+    """the tracked files of the release repo under code/, without symlinks; fails on identifying strings"""
+    import subprocess
+    if subprocess.run(["git", "-C", release, "status", "--porcelain"], capture_output=True, text=True).stdout.strip():
+        raise SystemExit(f"{release} has uncommitted changes: commit them (python tools/sync_release.py first)")
+    files = subprocess.run(["git", "-C", release, "ls-files", "-z"], capture_output=True, check=True).stdout.decode().split("\0")
+    n = 0
+    for f in sorted(x for x in files if x):
+        full = os.path.join(release, f)
+        if os.path.islink(full) or not os.path.isfile(full):
+            continue
+        data = open(full, "rb").read()
+        hits = [p.decode() for p in IDENTIFYING if p in data]
+        if hits:
+            raise SystemExit(f"identifying string {hits} in {full}")
+        z.writestr(zipfile.ZipInfo.from_file(full, f"{CODE}/{f}"), data, compress_type=zipfile.ZIP_DEFLATED, compresslevel=9)
+        n += 1
+    print(f"{CODE}/: {n} files from {release}")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--pdf", default=os.path.join(REPO, "paper", "build", "supp.pdf"), help="supplement PDF ('' to leave out)")
+    ap.add_argument("--release", default=os.path.join(REPO, "release", "phasorpt-code"), help="code release repo ('' to leave out)")
     ap.add_argument("--out", default=os.path.join(REPO, "paper", "build_supp"))
     args = ap.parse_args()
     os.makedirs(args.out, exist_ok=True)
@@ -141,6 +175,8 @@ def main():
         if args.pdf:
             z.write(args.pdf, os.path.basename(args.pdf))
         z.writestr("README.txt", ROOT_README if args.pdf else README)
+        if args.release:
+            add_code(z, args.release)
         for root, _, files in os.walk(page):
             for f in sorted(files):
                 full = os.path.join(root, f)
