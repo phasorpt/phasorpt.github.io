@@ -56,6 +56,42 @@ demo/               the live demo: WebAssembly module, model (config + fp16 weig
 """
 
 
+ROOT_README = """Supplementary material
+======================
+
+Contents of this archive
+------------------------
+supp.pdf                        the supplementary document
+README.txt                      this file
+project_page/                   the project page (offline copy):
+  index.html                      the page
+  assets/                         styles, scripts, figures, fonts, three.js, point clouds of the 3D viewer
+  demo/                           the live demo: WebAssembly module, model (config + fp16 weights), worker,
+                                  sample scene
+  README.txt                      the instructions below
+
+The project page has interactive versions of the phasor pooling and phasor attention figures, a 3D viewer of the
+qualitative results, and a live demo that runs PhasorPT in the browser (Rust + Burn compiled to WebAssembly, on
+WebGPU). It loads nothing from the internet.
+
+How to open the project page
+----------------------------
+The page has to be served over http from localhost (the browser does not run the 3D viewer and the demo from a
+file:// URL, and WebGPU is only available on localhost or https). With Python 3:
+
+    cd project_page
+    python3 -m http.server 8000
+
+then open http://localhost:8000 in the browser. Any other static file server works too.
+
+- Interactive figures and 3D viewer: any current browser.
+- Live demo: a browser with WebGPU, e.g. a recent Chrome or Edge (Firefox cannot run it yet). It loads nothing until
+  "Start the demo" is clicked, then reads the model from project_page/demo (about 77 MB) and segments a ScanNet
+  validation scene on the local GPU. The first run includes the compilation of the GPU kernels; "Run again" shows
+  the warm time. A dedicated GPU helps; on laptops, the browser may pick the integrated one.
+"""
+
+
 def review_html(s):
     """the page as submitted: no link buttons, no outgoing links"""
     s, n = re.subn(r'\s*<div class="links">.*?</div>\s*<p class="links-note">.*?</p>', "", s, count=1, flags=re.S)
@@ -104,8 +140,7 @@ def main():
     with zipfile.ZipFile(zpath, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as z:
         if args.pdf:
             z.write(args.pdf, os.path.basename(args.pdf))
-        z.writestr("README.txt", README.replace("from this folder", f"from the {PAGE}/ folder")
-                   .replace("This folder is", f"The folder {PAGE}/ is"))
+        z.writestr("README.txt", ROOT_README if args.pdf else README)
         for root, _, files in os.walk(page):
             for f in sorted(files):
                 full = os.path.join(root, f)
