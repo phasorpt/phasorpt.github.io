@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Copy the browser demo (rust/phasorpt-web, built with its build.sh) into website/demo: the wasm module (pkg, no
-# autotuning), the model (config + f16 weights), the worker and PLY reader, and the sample scene. The page's own UI
+# autotuning), the model (config + f16 weights), the worker and PLY reader, and the sample scenes ($SCENES, written with
+# their ground truth by tools/export_demo_scene.py). The page's own UI
 # is assets/js/demo.js; the demo's index.html / main.js (stats panel, URL options) are not used here.
 #   website/tools/sync_demo.sh [path/to/phasorpt-web/www [model_dir]]
 #     www default: ../rust/phasorpt-web/www (from the parent repo); model_dir (config.json + weights_f16.safetensors,
@@ -10,7 +11,8 @@ HERE="$(cd "$(dirname "$0")/.." && pwd)"
 SRC="${1:-$HERE/../rust/phasorpt-web/www}"
 MODEL="${2:-$HERE/../export/phasorpt-scannet-cnnkd}"
 DST="$HERE/demo"
-for f in worker.js ply.js pkg/phasorpt_web.js pkg/phasorpt_web_bg.wasm scenes/scene0011_00.ply; do
+SCENES="scene0011_00 scene0207_00 scene0353_00 scene0608_00"   # the first one loads when the demo starts
+for f in worker.js ply.js pkg/phasorpt_web.js pkg/phasorpt_web_bg.wasm $(printf 'scenes/%s.ply ' $SCENES); do
   [ -f "$SRC/$f" ] || { echo "missing $SRC/$f (run rust/phasorpt-web/build.sh first)" >&2; exit 1; }
 done
 for f in config.json weights_f16.safetensors; do
@@ -38,5 +40,5 @@ if grep -rq "$HOME" "$DST"; then
   echo "error: local paths under $HOME left in $DST:" >&2; grep -rl "$HOME" "$DST" >&2
   echo "(wasm: build with RUSTFLAGS=--remap-path-prefix=$HOME=~)" >&2; exit 1
 fi
-cp "$SRC/scenes/scene0011_00.ply" "$DST/scenes/"
+for s in $SCENES; do cp "$SRC/scenes/$s.ply" "$DST/scenes/"; done
 du -sh "$DST"/*

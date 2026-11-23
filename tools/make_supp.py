@@ -14,7 +14,7 @@ browsers only allow on https or localhost. Changes against the website:
 - no link buttons (paper / code / weights) and no outgoing links;
 - without the dev files: tools/, the git metadata, README.md, .nojekyll, unused images;
 - a README.txt with the instructions, also in the zip root.
-CVPR limits the supplementary file to 100 MB; the script prints the size and fails above it.
+The supplementary file may be at most 200 MB; the script prints the size and fails above it.
 """
 import argparse
 import os
@@ -27,7 +27,7 @@ REPO = os.path.dirname(SITE)
 PAGE = "project_page"
 CODE = "code"
 IDENTIFYING = [b"phasorpt.github", b"github.com/phasorpt"] + ([s.encode() for s in open(_ID).read().split()] if os.path.exists(_ID := os.path.join(SITE, "tools", ".identifying")) else [])
-LIMIT_MB = 100
+LIMIT_MB = 200
 SKIP_DIRS = {".git", "tools"}
 SKIP_FILES = {"README.md", ".nojekyll", ".gitignore", "assets/img/pooling.svg", "assets/img/logo.svg", "assets/img/logo.png"}
 
@@ -51,9 +51,10 @@ Browser
 -------
 - Interactive figures and 3D viewer: any current browser.
 - Live demo: a browser with WebGPU, e.g. a recent Chrome or Edge (Firefox cannot run it yet). It downloads nothing
-  until "Start the demo" is clicked, then loads the model from this folder (about 77 MB) and segments a ScanNet
-  validation scene on the local GPU. The first run includes the compilation of the GPU kernels; "Run again" shows
-  the warm time. A dedicated GPU helps; on laptops, the browser may pick the integrated one.
+  until "Start the demo" is clicked, then loads the model from this folder (about 77 MB) and segments ScanNet
+  validation scenes (four to choose from, or your own .ply) on the local GPU; click a point to see its predicted and
+  ground-truth class. The first run includes the compilation of the GPU kernels; "Run again" shows the warm time.
+  A decent dedicated GPU is recommended; on laptops, the browser may pick the integrated one.
 
 Contents
 --------
@@ -98,9 +99,10 @@ then open http://localhost:8000 in the browser. Any other static file server wor
 
 - Interactive figures and 3D viewer: any current browser.
 - Live demo: a browser with WebGPU, e.g. a recent Chrome or Edge (Firefox cannot run it yet). It loads nothing
-  until "Start the demo" is clicked, then reads the model from project_page/demo (about 77 MB) and segments a
-  ScanNet validation scene on the local GPU. The first run includes the compilation of the GPU kernels; "Run
-  again" shows the warm time. A dedicated GPU helps; on laptops, the browser may pick the integrated one.
+  until "Start the demo" is clicked, then reads the model from project_page/demo (about 77 MB) and segments
+  ScanNet validation scenes (four to choose from, or your own .ply) on the local GPU; click a point to see its
+  predicted and ground-truth class. The first run includes the compilation of the GPU kernels; "Run again" shows
+  the warm time. A decent dedicated GPU is recommended; on laptops, the browser may pick the integrated one.
 
 Contents of project_page/: index.html (the page), assets/ (styles, scripts, figures, fonts, three.js, point
 clouds of the 3D viewer), demo/ (WebAssembly module, model config and fp16 weights, worker, sample scene).

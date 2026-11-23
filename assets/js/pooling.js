@@ -22,30 +22,60 @@
     tok: { x: 950, y: 314, w: 22, c: 20 },
   };
 
-  // ---------- scene: a wall, a table, a round chair, a plant; sampled on a fine lattice (8 per cell axis)
-  let pts = [], toks = [];
+  // ---------- scene: a living room seen from above, sampled on a fine lattice (10 per cell axis); seed 0 is the fixed
+  // default layout, other seeds ("New scene") place the furniture at random
+  let pts = [], toks = [], seedS = 0;
   function build() {
-    const r = rng(7), gauss = () => Math.sqrt(-2 * Math.log(r() + 1e-12)) * Math.cos(2 * Math.PI * r()), raw = [];
+    const r = rng(seedS ? seedS * 977 + 3 : 7), gauss = () => Math.sqrt(-2 * Math.log(r() + 1e-12)) * Math.cos(2 * Math.PI * r()), raw = [];
     const add = (x, y, col, obj) => raw.push([x, y, col.map(v => Math.min(1, Math.max(0, v + .05 * gauss()))), obj]);
-    // a living room seen from above; objects first, the floor last (one point per fine voxel: first come wins)
+    // objects first, the floor last (one point per fine voxel: first come wins)
     const lerp3 = (a, b, t) => a.map((v, k) => v + (b[k] - v) * t);
     const ring = (cx, cy, rad, n, col, obj) => { for (let i = 0; i < n; i++) { const a = 2 * Math.PI * r(); add(cx + rad * Math.cos(a) + .025 * gauss(), cy + rad * Math.sin(a) + .025 * gauss(), col, obj); } };
     const box = (x0, y0, w, h, n, colA, colB, obj) => { for (let i = 0; i < n; i++) { const u = r(), v = r(); add(x0 + w * u, y0 + h * v, lerp3(colA, colB, u), obj); } };
+    const BOOKS = [[.72, .2, .2], [.2, .45, .7], [.85, .65, .2], [.3, .55, .3], [.55, .3, .6], [.9, .9, .85]];
+    const shelf = (x0, y0, k) => { for (let b = 0; b < k; b++) { const hue = BOOKS[Math.floor(r() * 6)]; box(x0 + b * .16, y0, .13, .28, 8, hue, hue, 1); } };
+    const plant = (x, y) => { for (let i = 0; i < 70; i++) add(x + .2 * gauss(), y + .2 * gauss(), lerp3([.2, .5, .22], [.55, .75, .3], r()), 6); };
+    const rug = (x0, y0, w, h, a, b) => { for (let i = 0; i < Math.round(70 * w * h); i++) { const x = x0 + w * r(), y = y0 + h * r(); add(x, y, Math.floor((x + y) * 4) % 2 ? a : b, 5); } };
+    const lamp = (x, y, col) => { ring(x, y, .17, 26, col, 7); add(x, y, col.map(v => Math.min(1, v + .1)), 7); };
     for (let x = .1; x < 5.9; x += .08) add(x, 3.86 + .02 * gauss(), [.80, .76, .68], 0);              // walls
     for (let y = .1; y < 3.86; y += .08) add(.12 + .02 * gauss(), y, [.80, .76, .68], 0);
-    for (let b = 0; b < 9; b++) {                                                                 // bookshelf: one colour per book
-      const hue = [[.72, .2, .2], [.2, .45, .7], [.85, .65, .2], [.3, .55, .3], [.55, .3, .6], [.9, .9, .85]][Math.floor(r() * 6)];
-      box(.8 + b * .16, 3.5, .13, .28, 8, hue, hue, 1);
+    if (!seedS) {
+      shelf(.8, 3.5, 9);                                                                                  // bookshelf
+      box(3.5, 3.05, 2.2, .5, 110, [.72, .22, .22], [.55, .16, .2], 2);                                 // sofa, L-shaped
+      box(5.2, 1.6, .5, 1.45, 75, [.55, .16, .2], [.72, .22, .22], 2);
+      box(1.55, 1.25, 1.5, .95, 150, [.68, .47, .27], [.5, .32, .18], 3);                               // table, wood grain
+      ring(1.2, 1.72, .26, 40, [.24, .42, .78], 4); ring(3.4, 1.72, .26, 40, [.24, .42, .78], 4);        // chairs
+      ring(2.3, .72, .26, 40, [.3, .5, .85], 4);
+      rug(3.8, .6, 1, 1, [.18, .6, .6], [.92, .88, .78]);                                                // striped rug
+      plant(.62, .6); lamp(5.45, .55, [.95, .78, .25]);
+    } else {
+      const pick = a => a[Math.floor(r() * a.length)], U = (a, b) => a + (b - a) * r(), used = [];
+      const take = (x0, y0, w, h) => used.push([x0 - .15, y0 - .15, x0 + w + .15, y0 + h + .15]);
+      const free = (x0, y0, w, h) => used.every(([a, b, c, d]) => x0 + w < a || x0 > c || y0 + h < b || y0 > d);
+      const place = (w, h, xr, yr) => {             // a free spot of size w x h (rejection sampling), or none
+        for (let k = 0; k < 60; k++) { const x = U(...xr), y = U(...yr); if (free(x, y, w, h)) { take(x, y, w, h); return [x, y]; } }
+        return null;
+      };
+      const sx = U(.5, 3.2), sk = 5 + Math.floor(r() * 9); shelf(sx, 3.5, sk); take(sx, 3.5, sk * .16, .3);
+      const sofa = pick([[[.72, .22, .22], [.55, .16, .2]], [[.35, .38, .45], [.25, .27, .33]], [[.3, .5, .35], [.2, .38, .26]], [[.8, .7, .5], [.65, .55, .38]]]);
+      if (r() < .5) {                                 // along the back wall, maybe L-shaped
+        const w = U(1.6, 2.2), x = U(5.7 - w - .6, 5.7 - w); box(x, 3.05, w, .5, Math.round(55 * w), ...sofa, 2); take(x, 3.05, w, .5);
+        if (r() < .6) { box(x + w - .5, 1.7, .5, 1.35, 75, sofa[1], sofa[0], 2); take(x + w - .5, 1.7, .5, 1.35); }
+      } else { const h = U(1.4, 2), y = U(.3, 3.6 - h); box(5.2, y, .5, h, Math.round(55 * h), ...sofa, 2); take(5.2, y, .5, h); }
+      const wood = pick([[[.68, .47, .27], [.5, .32, .18]], [[.85, .75, .58], [.72, .6, .44]], [[.4, .27, .18], [.3, .2, .14]]]);
+      const tw = U(1, 1.6), th = U(.7, 1), T = place(tw + .9, th + .9, [.35, 4.9 - tw], [.2, 3.1 - th]);
+      if (T) {
+        const tx = T[0] + .45, ty = T[1] + .45;
+        box(tx, ty, tw, th, Math.round(110 * tw * th), ...wood, 3);
+        const chair = pick([[.24, .42, .78], [.85, .45, .2], [.25, .25, .28], [.6, .3, .55]]);
+        [[tx - .32, ty + th / 2], [tx + tw + .32, ty + th / 2], [tx + tw / 2, ty - .32], [tx + tw / 2, ty + th + .32]]
+          .forEach(([x, y]) => { if (r() < .75) ring(x, y, .26, 40, chair, 4); });
+      }
+      if (r() < .8) { const w = U(.8, 1.3), h = U(.7, 1.1), R_ = place(w, h, [.3, 5.6 - w], [.2, 3.3 - h]);
+        if (R_) rug(R_[0], R_[1], w, h, pick([[.18, .6, .6], [.7, .25, .3], [.3, .35, .6]]), [.92, .88, .78]); }
+      for (let k = 1 + Math.floor(r() * 2); k > 0; k--) { const q = place(.6, .6, [.25, 5.2], [.2, 3.2]); if (q) plant(q[0] + .3, q[1] + .3); }
+      const l = place(.4, .4, [.25, 5.4], [.15, 3.4]); if (l) lamp(l[0] + .2, l[1] + .2, pick([[.95, .78, .25], [.95, .95, .9], [.9, .5, .3]]));
     }
-    box(3.5, 3.05, 2.2, .5, 110, [.72, .22, .22], [.55, .16, .2], 2);                              // sofa, L-shaped
-    box(5.2, 1.6, .5, 1.45, 75, [.55, .16, .2], [.72, .22, .22], 2);
-    box(1.55, 1.25, 1.5, .95, 150, [.68, .47, .27], [.5, .32, .18], 3);                            // table, wood grain
-    ring(1.2, 1.72, .26, 40, [.24, .42, .78], 4); ring(3.4, 1.72, .26, 40, [.24, .42, .78], 4);     // chairs
-    ring(2.3, .72, .26, 40, [.3, .5, .85], 4);
-    for (let i = 0; i < 70; i++) { const x = 3.8 + 1.0 * r(), y = .6 + 1.0 * r(), st = Math.floor((x + y) * 4) % 2;   // striped rug
-      add(x, y, st ? [.18, .6, .6] : [.92, .88, .78], 5); }
-    for (let i = 0; i < 70; i++) add(.62 + .2 * gauss(), .6 + .2 * gauss(), lerp3([.2, .5, .22], [.55, .75, .3], r()), 6);   // plant
-    ring(5.45, .55, .17, 26, [.95, .78, .25], 7); add(5.45, .55, [1, .9, .4], 7);                   // lamp
     for (let i = 0; i < 70; i++) add(.15 + 5.7 * r(), .15 + 3.7 * r(), [.86, .85, .82], 8);       // floor
     const seen = new Map();
     for (const [x, y, col, obj] of raw) {
@@ -54,7 +84,7 @@
       if (!seen.has(k)) seen.set(k, { x, y, col, obj });
     }
     pts = [...seen.values()];
-    const map = new Map(); toks = [];
+    const map = new Map(); toks = []; fields.clear();
     pts.forEach((p, i) => {
       const k = Math.floor(p.x) + "," + Math.floor(p.y);
       if (!map.has(k)) { map.set(k, toks.length); toks.push({ ix: Math.floor(p.x), iy: Math.floor(p.y), idx: [] }); }
@@ -252,9 +282,11 @@
   });
   document.getElementById("pw-waves").addEventListener("click", () => { seedW++; waves(); fields.clear(); draw(); });
 
-  build(); waves(); colors();
-  // default token: the cell with the most different objects (then the most points)
-  st.tok = toks.reduce((b, t, i) => (t.objs > toks[b].objs || (t.objs === toks[b].objs && t.idx.length > toks[b].idx.length)) ? i : b, 0);
+  // default token: a busy cell, several different objects (up to 3 count) and many points
+  const score = t => (seedS ? Math.min(t.objs, 3) : t.objs) * 1000 + t.idx.length;   // default scene: as before
+  const pickTok = () => { st.tok = toks.reduce((b, t, i) => score(t) > score(toks[b]) ? i : b, 0); st.hl = -1; };
+  document.getElementById("pw-scene").addEventListener("click", () => { seedS++; build(); pickTok(); draw(); });
+  build(); waves(); colors(); pickTok();
   size(); draw();
   let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { size(); draw(); }, 100); });
   if (document.fonts) document.fonts.ready.then(draw);

@@ -124,11 +124,12 @@ function placePin() {
   const D = st.index[st.ds], pred = cur.geo.attributes.pred.array[pin.i], gt = cur.geo.attributes.gt.array[pin.i];
   const sw = c => `<i style="background:${c < D.names.length ? `rgb(${D.palette[c].join(",")})` : "#dcdfe4"}"></i>`;
   const nm = c => c < D.names.length ? D.names[c] : "unlabeled";
-  // always both, whatever the view on that side of the divider
-  const html = `${sw(pred)}<b>${nm(pred)}</b><small>PhasorPT</small><span class="sep"></span>${sw(gt)}<b>${nm(gt)}</b><small>ground truth</small>` +
-    (gt < 255 ? `<em class="${gt === pred ? "ok" : "bad"}">${gt === pred ? "✓" : "✗"}</em>` : "");
+  // always both, whatever the view on that side of the divider: prediction above, ground truth below
+  const html = `<small>PhasorPT</small>${sw(pred)}<b>${nm(pred)}</b>` +
+    (gt < 255 ? `<em class="${gt === pred ? "ok" : "bad"}">${gt === pred ? "✓" : "✗"}</em>` : "") +
+    `<small>ground truth</small>${sw(gt)}<b>${nm(gt)}</b>`;
   tip.innerHTML = html;
-  tip.style.display = "flex"; dot.style.display = "block";
+  tip.style.display = "grid"; dot.style.display = "block";
   dot.style.left = x + "px"; dot.style.top = y + "px";
   // the label above right of the point, kept inside the stage
   const tw = tip.offsetWidth, th = tip.offsetHeight;

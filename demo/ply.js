@@ -1,4 +1,5 @@
-// Minimal PLY reader: vertex x/y/z, optional red/green/blue (uchar 0..255 or float 0..1) and nx/ny/nz.
+// Minimal PLY reader: vertex x/y/z, optional red/green/blue (uchar 0..255 or float 0..1), nx/ny/nz, and label
+// (per-point ground-truth class, 255 = unlabeled; written by tools/export_demo_scene.py).
 // Supports binary_little_endian and ascii.
 
 const SIZES = { char: 1, int8: 1, uchar: 1, uint8: 1, short: 2, int16: 2, ushort: 2, uint16: 2,
@@ -40,11 +41,13 @@ export function parsePly(buffer) {
   for (const k of ['x', 'y', 'z']) if (!(k in idx)) throw new Error(`PLY without ${k}`);
   const hasColor = ['red', 'green', 'blue'].every((k) => k in idx);
   const hasNormal = ['nx', 'ny', 'nz'].every((k) => k in idx);
+  const hasLabel = 'label' in idx;
   const colorIsFloat = hasColor && props[idx.red].type.startsWith('float');
 
   const coord = new Float32Array(count * 3);
   const color = new Float32Array(hasColor ? count * 3 : 0);
   const normal = new Float32Array(hasNormal ? count * 3 : 0);
+  const label = new Uint8Array(hasLabel ? count : 0);
   const take = (get) => {
     for (let i = 0; i < count; i++) {
       coord[3 * i] = get(i, idx.x); coord[3 * i + 1] = get(i, idx.y); coord[3 * i + 2] = get(i, idx.z);
@@ -53,6 +56,7 @@ export function parsePly(buffer) {
         color[3 * i] = get(i, idx.red) * s; color[3 * i + 1] = get(i, idx.green) * s; color[3 * i + 2] = get(i, idx.blue) * s;
       }
       if (hasNormal) { normal[3 * i] = get(i, idx.nx); normal[3 * i + 1] = get(i, idx.ny); normal[3 * i + 2] = get(i, idx.nz); }
+      if (hasLabel) label[i] = get(i, idx.label);
     }
   };
   if (format === 'binary_little_endian') {
@@ -65,5 +69,5 @@ export function parsePly(buffer) {
     const rows = new TextDecoder().decode(bytes.subarray(headerEnd)).trim().split(/\r?\n/, count).map((l) => l.trim().split(/\s+/).map(Number));
     take((i, k) => rows[i][k]);
   }
-  return { count, coord, color, normal };
+  return { count, coord, color, normal, label };
 }

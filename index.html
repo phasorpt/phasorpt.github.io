@@ -107,6 +107,7 @@
       <div class="demo-title">
         <span class="hint">Click a cell of the scene to pick a token. Hover a point to follow it through the steps.</span>
         <span class="pw-actions">
+          <button type="button" class="ghost" id="pw-scene">New scene</button>
           <button type="button" class="ghost" id="pw-waves">New waves</button>
         </span>
       </div>
@@ -152,7 +153,7 @@
           </span>
           <span class="controls">
             <label for="attn-spread">Spread <input type="range" id="attn-spread" min="0.4" max="5" step="0.05" value="1.4"></label>
-            <label for="attn-drop">Empty space <input type="range" id="attn-drop" min="0" max="0.8" step="0.05" value="0.35"></label>
+            <label for="attn-drop">Empty space <input type="range" id="attn-drop" min="0" max="0.8" step="0.05" value="0.55"></label>
             <label for="attn-cont">Value content <input type="range" id="attn-cont" min="0" max="1" step="0.05" value="0"></label>
           </span>
           <button type="button" class="ghost" id="attn-reseed">New scene</button>
@@ -192,8 +193,8 @@
   <div class="wrap">
     <div class="head reveal">
       <span class="eyebrow">Results</span>
-      <h2>PTv3 accuracy without sparse convolutions</h2>
-      <p>Without the convolutions, PhasorPT also needs only half the parameters of PTv3. Semantic segmentation, validation mIoU, every model trained from scratch on a single dataset.</p>
+      <h2>Semantic Segmentation</h2>
+      <p>Validation mIoU on five benchmarks, every model trained from scratch on a single dataset. PhasorPT uses no sparse convolutions and about half the parameters of PTv3.</p>
     </div>
 
     <div class="card reveal table-card">
@@ -236,9 +237,9 @@
 <section class="block" id="scenes">
   <div class="wrap">
     <div class="head reveal">
-      <span class="eyebrow">Qualitative results</span>
-      <h2>Predictions in 3D</h2>
-      <p>Validation scenes near the median per-scene mIoU. Drag the divider to compare two views.</p>
+      <span class="eyebrow">3D viewer</span>
+      <h2>Qualitative Results</h2>
+      <p>Validation scenes near the median per-scene mIoU. Drag the divider to compare two views, click a point to see its class.</p>
     </div>
     <div class="card viewer reveal" id="viewer">
       <div class="vbar">
@@ -279,19 +280,23 @@
         <span class="seg" role="group" aria-label="Colours">
           <button type="button" data-dmode="input" aria-pressed="true">Input (RGB)</button>
           <button type="button" data-dmode="pred" aria-pressed="false" disabled>PhasorPT</button>
+          <button type="button" data-dmode="gt" aria-pressed="false" disabled>Ground truth</button>
         </span>
         <span class="spacer"></span>
         <label class="ghost-file"><input type="file" id="demo-file" accept=".ply" hidden disabled>Open your own .ply</label>
         <button type="button" class="ghost" id="demo-run" disabled>Run again</button>
       </div>
+      <div class="scenes" id="demo-scenes"></div>
       <div class="stage" id="demo-stage">
         <div class="demo-start" id="demo-start">
-          <p class="demo-lead">Segment a ScanNet validation scene on your GPU.</p>
+          <p class="demo-lead">Segment ScanNet validation scenes on your GPU.</p>
           <button type="button" class="btn" id="demo-go">Start the demo</button>
-          <p class="cap">Downloads about 77 MB (model, code, scene). Needs a browser with WebGPU: a recent Chrome or Edge. Firefox is not supported yet.</p>
+          <p class="cap">Downloads about 77 MB (model, code, first scene). Needs a browser with WebGPU: a recent Chrome or Edge; Firefox is not supported yet. The model runs on your own GPU, so a decent dedicated GPU is recommended; on integrated graphics a run takes much longer.</p>
         </div>
         <div class="stat-chip" id="demo-status" style="display:none"></div>
-        <div class="help-chip" id="demo-help" style="display:none">drag: orbit · right-drag: pan · wheel: zoom</div>
+        <div class="hover-dot" id="d-hover-dot"></div>
+        <div class="hover-tip" id="d-hover"></div>
+        <div class="help-chip" id="demo-help" style="display:none">click a point: class · drag: orbit · right-drag: pan · wheel: zoom</div>
       </div>
       <div class="vlegend" id="demo-legend"></div>
     </div>

@@ -14,7 +14,7 @@
   const R = 9, N = 2 * R + 1, GS = 400, OX = 8, OY = 8, cell = GS / N;
   const CW = OX + GS + 96, CH = OY + GS + 90;
   const Q = 4, bands = [...Array(Q)].map((_, k) => 1.2 * Math.pow(100, -k / Q));
-  const st = { aim: [3.2, -1.6], sig: 1.4, drop: 0.35, nseed: 11, mode: "phasor", nsc: 4, cont: 0 };
+  const st = { aim: [3.2, -1.6], sig: 1.4, drop: 0.55, nseed: 11, mode: "phasor", nsc: 4, cont: 0 };
   const keys = [];
   // every key also carries a random content value (a 2D feature, as a complex number), mixed in by "Value content"
   let vs = 7; const vr = () => { vs = (vs * 16807) % 2147483647; return vs / 2147483647; };

@@ -242,14 +242,14 @@ footer .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wr
 .pw-eq.stack > span:nth-child(3n) { text-align: left; }
 
 /* ---------- viewer hover readout ---------- */
-.hover-tip { position: absolute; display: none; align-items: center; gap: 6px; pointer-events: none; z-index: 3;
-  background: rgba(255, 255, 255, .95); border: 1px solid var(--rule); border-radius: 7px; padding: 5px 9px;
+.hover-tip { position: absolute; display: none; grid-template-columns: auto auto auto auto; align-items: center; column-gap: 6px; row-gap: 4px;
+  pointer-events: none; z-index: 3; background: rgba(255, 255, 255, .95); border: 1px solid var(--rule); border-radius: 7px; padding: 6px 9px;
   font: 400 .78rem/1.2 var(--body); color: var(--ink); white-space: nowrap; box-shadow: 0 2px 8px rgba(0, 0, 0, .08); }
-.hover-tip i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; flex: none; }
-.hover-tip b { font-weight: 600; }
-.hover-tip small { color: var(--faint); font-size: .7rem; }
-.hover-tip .sep { width: 1px; height: 14px; background: var(--rule); margin: 0 3px; }
-.hover-tip em { font-style: normal; font-weight: 600; margin-left: 2px; }
+/* fixed columns: a row without the check mark (unlabeled ground truth) must not shift the next row */
+.hover-tip i { grid-column: 2; width: 10px; height: 10px; border-radius: 3px; display: inline-block; flex: none; }
+.hover-tip b { grid-column: 3; font-weight: 600; }
+.hover-tip small { grid-column: 1; color: var(--faint); font-size: .7rem; text-align: right; }
+.hover-tip em { grid-column: 4; grid-row: 1 / span 2; font-style: normal; font-weight: 600; font-size: .95rem; margin-left: 4px; }
 .hover-tip em.ok { color: var(--accent); } .hover-tip em.bad { color: #e0452e; }
 .hover-dot { position: absolute; display: none; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%;
   border: 2px solid var(--ink); box-shadow: 0 0 0 2px rgba(255, 255, 255, .9); pointer-events: none; z-index: 2; }
